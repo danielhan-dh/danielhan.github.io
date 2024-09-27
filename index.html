@@ -38,13 +38,15 @@
         .code-block code {
             color: #d63384;
         }
+        p {
+            text-align: justify;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1 id="welcome-to-my-github-page-">Welcome to my Github page!</h1>
-        <p>Daniel Han</p>
         <h1>Homework 2</h1>
         <h2>Question 1</h2>
         <p>Presented below is code of gradient boosting on a locally weighted regression algorithm. This code is then applied onto the dataset "concrete" which contains various feature variables detailing the attributes of concrete. These feature variables are then used to train and predict the y value "strength".</p>
@@ -70,6 +72,7 @@
         <p>Here is the code for the loess model created in homework 1. In this method, it scales the data and computes the distances to fit the loess model.</p>
 
         <h2>Implementation of Gradient Boosting</h2>
+        <p>Below is the implementation of the gradient boosting into the loess model. This includes the methods <code>fit</code>, <code>is_fitted</code>, and <code>predict</code>, as well as the method <code>cross_validate</code> to cross-validate the data at the end.</p>
 
         <div class="code-block">
             <code>
@@ -126,10 +129,133 @@
             </code>
         </div>
 
-        <p>The code continues with testing steps for best hyperparameters and scaling methods...</p>
+        <p>Gradient boosting is applied in the <code>fit</code> and <code>predict</code> methods. The method <code>fit</code> applies the loss function, and the residuals of the model represent how far away the predictions are from the true y values. The function performs this for <code>boosting_steps</code> number of iterations, which is optimized later in the code.</p>
+
+        <h2>Scaler Testing</h2>
+        <p>Below is the code for testing which scalar has the best MSE out of <code>StandardScaler</code>, <code>MinMaxScaler</code>, and <code>QuantileTransformer</code>.</p>
+
+        <div class="code-block">
+            <code>
+                scalers = [StandardScaler(), MinMaxScaler(), QuantileTransformer()]<br>
+                mse_scalers = []<br>
+                for scaler in scalers:<br>
+                    loess_model = LOESS(kern=Quartic, tau=0.05, alpha=0.01, scalerType=scaler)<br>
+                    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)<br>
+                    loess_model.fit(X_train, y_train, boosting_steps=10)<br>
+                    predictions = loess_model.predict(X_test)<br>
+                    mse = mean_squared_error(y_test, predictions)<br>
+                    mse_scalers.append(mse)
+            </code>
+        </div>
+
+        <p>StandardScaler had an MSE of 1502.299, MinMaxScaler an MSE of 1299.467, and QuantileTransformer an MSE of 1311.889. Therefore, the best scaler to use on the concrete dataset is <code>MinMaxScaler</code>.</p>
+
+        <h2>Kernel Testing</h2>
+        <p>The code below tests for the best kernel out of Gaussian, Tricubic, Epanechnikov, and Quartic.</p>
+
+        <div class="code-block">
+            <code>
+                kernels = [Gaussian, tricubic, Epanechnikov, Quartic]<br>
+                mse_kernel = []<br>
+                for kernel in kernels:<br>
+                    loess_model = LOESS(kern=kernel, tau=0.05, alpha=0.01, scalerType=MinMaxScaler())<br>
+                    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)<br>
+                    loess_model.fit(X_train, y_train, boosting_steps=10)<br>
+                    predictions = loess_model.predict(X_test)<br>
+                    mse = mean_squared_error(y_test, predictions)<br>
+                    mse_kernel.append(mse)
+            </code>
+        </div>
+
+       <p>Interestingly, the kernel did not matter as much as the scalar did, as all the MSE values had the same value at 1299.467, the same as the MSE from just testing the <code>MinMaxScaler</code>. Further research is required to find out why this is, as the kernel should generally change the outcome. Normally, the <code>Epanechnikov</code> kernel would yield the lowest MSE out of all the kernels.</p>
+
+        <h2>Hyperparameter Testing</h2>
+        <p>The code below shows the testing steps to determine the best hyperparameters. Here, I tested for the optimal number of boosting steps, tau, and alpha. The steps I chose were from 5-10, for tau 0.05-0.1, and for alpha 0.01 to 0.1. I did not want to include a huge range for any of these hyperparameters because the execution time was increasing exponentially. This was the best range I found that would execute in a timely manner while also covering a wide range of hyperparameters.</p>
+
+        <div class="code-block">
+            <code>
+                best_n_steps = None<br>
+                best_tau = None<br>
+                best_alpha = None<br>
+                best_mse = float('inf')<br>
+                <br>
+                for n_steps in [5, 10]:<br>
+                    for tau in [0.05, 0.1]:<br>
+                        for alpha in [0.01, 0.1]:<br>
+                            loess_boost_model = LOESS(kern='tricube', tau=tau, alpha=alpha, scalerType=MinMaxScaler())<br>
+                            X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)<br>
+                            loess_model.fit(X_train, y_train, boosting_steps=n_steps)<br>
+                            <br>
+                            predictions = loess_model.predict(X_test)<br>
+                            <br>
+                            mse = mean_squared_error(y_test, predictions)<br>
+                            if mse < best_mse:<br>
+                                best_mse = mse<br>
+                                best_n_steps = n_steps<br>
+                                best_tau = tau<br>
+                                best_alpha = alpha
+            </code>
+        </div>
+
+        <p>At the end of these processes, I determined that the best parameters to be used in the gradient boosting algorithm were 5 steps of boosting, a tau of 0.1, and an alpha of 0.1. This yielded the best MSE of 1158.985. Finally, the best model after all of the testing is shown here:</p>
+
+        <div class="code-block">
+            <code>
+                loess_model = LOESS(kern=Gaussian, tau=0.1, alpha=0.1, scalerType=MinMaxScaler())
+            </code>
+        </div>
+
+        <h2>Final Cross Validation</h2>
+        <p>After testing it in a 10-split cross validation, the final MSE is 1361.708.</p>
+
+        <h2>Comparison with eXtreme Gradient Boosting</h2>
+        <p>Compared to the eXtreme Gradient Boosting (XGBoost), the MSE is significantly higher. The eXtreme model ended with an MSE of 23.730, which is magnitudes lower than my self-implemented gradient boosting and LOESS algorithm. Clearly, there is a critical error within my implementation, but I was not able to determine where this is.</p>
+
+               <h1>Homework 2 - Question 2</h1>
+
+        <h2>Iris Dataset Classification</h2>
+        <p>Using the <em>iris</em> dataset, which contains 4 feature variables describing the physical characteristics of irises, I implemented locally weighted logistic regression to classify which species of flower they belonged to based on these features. Below is my implementation of locally weighted logistic regression:</p>
+
+        <div class="code-block">
+            <code>
+                def lwlr(X, y, x_query, tau):<br>
+                    m = len(y)<br>
+                    weights = np.array([kernel(x_query, X[i], tau) for i in range(m)])<br>
+                    W = np.diag(weights)<br>
+                    <br>
+                    theta = np.linalg.pinv(X.T @ W @ X) @ X.T @ W @ y<br>
+                    return expit(x_query @ theta)
+            </code>
+        </div>
+
+        <p>To accommodate all possible classifications in this multiclass dataset (which contains 3 possible categories), I used a one-vs-all approach. This means that for each category, the algorithm performs binary classification: 1 vs not 1, 2 vs not 2, or 3 vs not 3.</p>
+
+        <div class="code-block">
+            <code>
+                def predict_multiclass_lwlr(X, y, X_query, tau):<br>
+                    n_classes = len(np.unique(y))<br>
+                    predictions = []<br>
+                    <br>
+                    for c in range(n_classes):<br>
+                        binary_y = np.where(y == c, 1, 0)<br>
+                        class_preds = [lwlr(X, binary_y, x_query, tau) for x_query in X_query]<br>
+                        predictions.append(class_preds)<br>
+                    <br>
+                    predictions = np.array(predictions).T<br>
+                    return np.argmax(predictions, axis=1)
+            </code>
+        </div>
+
+        <p>Testing this implementation on the <em>iris</em> dataset yielded an accuracy of 81.33%. The one-vs-all approach worked effectively for this multiclass problem.</p>
+
+        <h2>One-vs-All Classification</h2>
+        <p>As noted, this dataset contains 3 categories, so the one-vs-all method converts the multiclass problem into multiple binary classification problems. Each classifier predicts whether a sample belongs to one specific class or not.</p>
+
+        <h2>Comparison with Calvin Chi’s Algorithm</h2>
+        <p>Using Calvin Chi’s algorithm with a similar one-vs-all approach also resulted in an accuracy of 81.33%. Both implementations produced the same result. Below is a visualization of how these algorithms categorized the data. The colored dots represent the true class labels, while the colored sections indicate the algorithm's predictions.</p>
+        <p><img src="images/loess.png" alt="Code"></p>
 
     </div>
 
 </body>
 </html>
-
