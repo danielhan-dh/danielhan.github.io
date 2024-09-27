@@ -13,21 +13,136 @@
 <p><img src="images/cv_mse.png"></p>
 <p>The 10-Fold cross validation yielded an MSE of 1.0832.</p>
 
-<p style="text-align: center;"><h3 id="homework-2">Homework 2</h3>
-<h3 id="question-1">Question 1</h3>
-<p>Presented below is code of gradient boosting on a locally weighted regression algorithm. This code is then applied onto the data set &quot;concrete&quot; which contains various feature variables detailing the attributes of concrete. These feature variables are then used to train and predict the y value &quot;strength&quot;. </p></p>
-<code>
-def loess(xtrain, ytrain, kern, tau, scalerType, alpha):
-  distances = cdist(xtrain, xtrain, metric='Euclidean')
-  scaler = scalerType
-  xscaled = scaler.fit_transform(xtrain)
-  weights = kernel_function(distances, kern, tau = 0.05)
-  model = Ridge(alpha = alpha, max_iter = 5000)
-  models = []
-  predictions = []
-  for i in range(len(xtrain)):
-    loess = model.fit(np.diag(weights[:,i])@xscaled, np.diag(weights[:,i])@ytrain)
-    predictions[i] = models[i].predict(X[i].reshape(1, -1))
-    models.append(loess)
-  return models, weights, scaler, predictions
-</code>.</p>;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homework 2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f7f7f7;
+        }
+        .container {
+            width: 80%;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+        h1, h2 {
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background-color: #f1f1f1;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: left;
+            font-family: "Courier New", Courier, monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-bottom: 20px;
+        }
+        .code-block code {
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Homework 2</h1>
+        <h2>Question 1</h2>
+        <p>Presented below is code of gradient boosting on a locally weighted regression algorithm. This code is then applied onto the dataset "concrete" which contains various feature variables detailing the attributes of concrete. These feature variables are then used to train and predict the y value "strength".</p>
+
+        <div class="code-block">
+            <code>
+                def loess(xtrain, ytrain, kern, tau, scalerType, alpha):<br>
+                    distances = cdist(xtrain, xtrain, metric='Euclidean')<br>
+                    scaler = scalerType<br>
+                    xscaled = scaler.fit_transform(xtrain)<br>
+                    weights = kernel_function(distances, kern, tau=0.05)<br>
+                    model = Ridge(alpha=alpha, max_iter=5000)<br>
+                    models = []<br>
+                    predictions = []<br>
+                    for i in range(len(xtrain)):<br>
+                        loess = model.fit(np.diag(weights[:, i]) @ xscaled, np.diag(weights[:, i]) @ ytrain)<br>
+                        predictions[i] = models[i].predict(X[i].reshape(1, -1))<br>
+                        models.append(loess)<br>
+                    return models, weights, scaler, predictions
+            </code>
+        </div>
+
+        <p>Here is the code for the loess model created in homework 1. In this method, it scales the data and computes the distances to fit the loess model.</p>
+
+        <h2>Implementation of Gradient Boosting</h2>
+
+        <div class="code-block">
+            <code>
+                class LOESS:<br>
+                    def __init__(self, kern='tricube', tau=0.05, alpha=0.01, scalerType=StandardScaler()):<br>
+                        self.kern = kern<br>
+                        self.tau = tau<br>
+                        self.alpha = alpha<br>
+                        self.scalerType = scalerType<br>
+                        self.is_fitted_ = False  # To track if the model has been fitted<br>
+                        self.models = []<br>
+                        self.scaler = None<br>
+                    <br>
+                    def fit(self, X, y, boosting_steps=10):<br>
+                        self.scaler = self.scalerType<br>
+                        X_scaled = self.scaler.fit_transform(X)<br>
+                        residuals = y.copy()<br>
+                        for step in range(boosting_steps):<br>
+                            distances = cdist(X_scaled, X_scaled, metric='euclidean')<br>
+                            weights = kernel_function(distances, self.kern, tau=self.tau)<br>
+                            model = Ridge(alpha=self.alpha, max_iter=5000)<br>
+                            predictions = np.zeros(len(X_scaled))<br>
+                            for i in range(len(X_scaled)):<br>
+                                loess_model = model.fit(np.diag(weights[:, i]) @ X_scaled, np.diag(weights[:, i]) @ residuals)<br>
+                                predictions[i] = loess_model.predict(X_scaled[i].reshape(1, -1))<br>
+                            residuals -= predictions<br>
+                            self.models.append(model)<br>
+                        self.is_fitted_ = True<br>
+                    <br>
+                    def predict(self, X):<br>
+                        X_scaled = self.scaler.transform(X)<br>
+                        final_predictions = np.zeros(len(X_scaled))<br>
+                        for model in self.models:<br>
+                            step_predictions = np.zeros(len(X_scaled))<br>
+                            for i in range(len(X_scaled)):<br>
+                                step_predictions[i] = model.predict(X_scaled[i].reshape(1, -1))<br>
+                            final_predictions += step_predictions<br>
+                        return final_predictions / len(self.models)<br>
+                    <br>
+                    def is_fitted(self):<br>
+                        return self.is_fitted_<br>
+                    <br>
+                    def cross_validate(self, X, y, n_splits=10):<br>
+                        kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)<br>
+                        mse_scores = []<br>
+                        for train_index, val_index in kf.split(X):<br>
+                            X_train, X_val = X[train_index], X[val_index]<br>
+                            y_train, y_val = y[train_index], y[val_index]<br>
+                            self.fit(X_train, y_train, boosting_steps=10)<br>
+                            y_pred = self.predict(X_val)<br>
+                            mse = mean_squared_error(y_val, y_pred)<br>
+                            mse_scores.append(mse)<br>
+                        return np.mean(mse_scores)
+            </code>
+        </div>
+
+        <p>The code continues with testing steps for best hyperparameters and scaling methods...</p>
+
+    </div>
+
+</body>
+</html>
+
