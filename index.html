@@ -12,14 +12,22 @@
 <p>The train test split yielded an MSE of 1.1594.</p>
 <p><img src="images/cv_mse.png"></p>
 <p>The 10-Fold cross validation yielded an MSE of 1.0832.</p>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Button to New Page</title>
-</head>
-<body>
-    <button onclick="window.open('', '_blank')">Open Blank Page</button>
-</body>
-</html>
+
+<p style="text-align: center;"><h3 id="homework-2">Homework 2</h3>
+<h3 id="question-1">Question 1</h3>
+<p>Presented below is code of gradient boosting on a locally weighted regression algorithm. This code is then applied onto the data set &quot;concrete&quot; which contains various feature variables detailing the attributes of concrete. These feature variables are then used to train and predict the y value &quot;strength&quot;. </p></p>
+<code>
+def loess(xtrain, ytrain, kern, tau, scalerType, alpha):
+  distances = cdist(xtrain, xtrain, metric='Euclidean')
+  scaler = scalerType
+  xscaled = scaler.fit_transform(xtrain)
+  weights = kernel_function(distances, kern, tau = 0.05)
+  model = Ridge(alpha = alpha, max_iter = 5000)
+  models = []
+  predictions = []
+  for i in range(len(xtrain)):
+    loess = model.fit(np.diag(weights[:,i])@xscaled, np.diag(weights[:,i])@ytrain)
+    predictions[i] = models[i].predict(X[i].reshape(1, -1))
+    models.append(loess)
+  return models, weights, scaler, predictions
+</code>.</p>;
