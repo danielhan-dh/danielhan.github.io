@@ -254,7 +254,132 @@
         <p>Using Calvin Chi’s algorithm with a similar one-vs-all approach also resulted in an accuracy of 81.33%. Both implementations produced the same result. Below is a visualization of how these algorithms categorized the data. The colored dots represent the true class labels, while the colored sections indicate the algorithm's predictions.</p>
         <p><img src="images/graph2.PNG" alt="Graph of locally weighted logistic regression"></p>
 
+ <h1>Homework 3</h1>
+        <h2>Question 1: SCAD Algorithm</h2>
+        <p>SCAD stands for smoothly clipped absolute deviation. This algorithm is a regularization and variable selection algorithm, most similar to other algorithms such as LASSO and ElasticNet. The benefit of using SCAD is that it alleviates the bias which affects algorithms like LASSO. Using the SCAD penalty and derivative function found on Andy Jones’ implementation below, I modified previous code used for ElasticNet and adapted it to use the SCAD algorithm.</p>
+
+        <div class="code-block">
+            <code>
+                # Modified for usage with torch<br>
+                def scad_penalty(beta_hat, lambda_val, a_val):<br>
+                    is_linear = (torch.abs(beta_hat) <= lambda_val)<br>
+                    is_quadratic = (lambda_val < torch.abs(beta_hat)) & (torch.abs(beta_hat) <= a_val * lambda_val)<br>
+                    is_constant = (a_val * lambda_val) < torch.abs(beta_hat)<br>
+                    <br>
+                    linear_part = lambda_val * torch.abs(beta_hat) * is_linear<br>
+                    quadratic_part = (2 * a_val * lambda_val * torch.abs(beta_hat) - beta_hat**2 - lambda_val**2) / (2 * (a_val - 1)) * is_quadratic<br>
+                    constant_part = (lambda_val**2 * (a_val + 1)) / 2 * is_constant<br>
+                    return linear_part + quadratic_part + constant_part<br>
+                <br>
+                def scad_derivative(beta_hat, lambda_val, a_val):<br>
+                    return lambda_val * ((beta_hat <= lambda_val) + (a_val * lambda_val - beta_hat) * ((a_val * lambda_val - beta_hat) > 0) / ((a_val - 1) * lambda_val) * (beta_hat > lambda_val))
+            </code>
+        </div>
+
+        <p>These methods are then used to calculate the penalty when training the SCAD model. Below is the modified SCAD model that integrates the penalty into the loss function.</p>
+
+        <div class="code-block">
+            <code>
+                class SCAD(nn.Module):<br>
+                    def __init__(self, input_size, alpha=1.0, lambda_val=0.1, a_val=0.5):<br>
+                        super(SCAD, self).__init__()<br>
+                        self.input_size = input_size<br>
+                        self.alpha = alpha<br>
+                        self.a_val = a_val<br>
+                        self.lambda_val = lambda_val<br>
+                        self.linear = nn.Linear(input_size, 1, dtype=torch.float64)<br>
+                    <br>
+                    def forward(self, x):<br>
+                        return self.linear(x)<br>
+                    <br>
+                    def loss(self, y_pred, y_true):<br>
+                        mse_loss = nn.MSELoss()(y_pred, y_true)<br>
+                        scad_reg = scad_penalty(self.linear.weight, self.lambda_val, self.a_val).sum()<br>
+                        loss = mse_loss + self.alpha * scad_reg<br>
+                        return loss<br>
+                    <br>
+                    def fit(self, X, y, num_epochs=100, learning_rate=0.01):<br>
+                        optimizer = optim.SGD(self.parameters(), lr=learning_rate)<br>
+                        for epoch in range(num_epochs):<br>
+                            self.train()<br>
+                            optimizer.zero_grad()<br>
+                            y_pred = self(X)<br>
+                            loss = self.loss(y_pred, y)<br>
+                            loss.backward()<br>
+                            optimizer.step()<br>
+                            if (epoch + 1) % 10 == 0:<br>
+                                print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}")<br>
+                    <br>
+                    def predict(self, X):<br>
+                        self.eval()<br>
+                        with torch.no_grad():<br>
+                            y_pred = self(X)<br>
+                        return y_pred<br>
+                    <br>
+                    def get_coefficients(self):<br>
+                        return self.linear.weight
+            </code>
+        </div>
+
+        <p>Using the concrete dataset, I trained a SCAD model on a train-test split of the data, with the final test loss at 102.4876. After training the model, I obtained the learned weights to determine which features were useful. The closer a feature's coefficient is to 0, the less important it is.</p>
+
+        <h2>Feature Importance</h2>
+        <p>The feature with the lowest importance was the amount of ash in the concrete, with a weight of -0.1623.</p>
+
+        <h2>Question 2: Testing Algorithms on Simulated Data</h2>
+        <p>Using the code to generate simulated data from the lecture, I tested the three algorithms: ElasticNet, square root LASSO, and my SCAD implementation. Below is the function to generate correlated features:</p>
+
+        <div class="code-block">
+            <code>
+                def make_correlated_features(num_samples, p, rho):<br>
+                    vcor = []<br>
+                    for i in range(p):<br>
+                        vcor.append(rho**i)<br>
+                    r = toeplitz(vcor)<br>
+                    mu = np.repeat(0, p)<br>
+                    x = np.random.multivariate_normal(mu, r, size=num_samples)<br>
+                    return x
+            </code>
+        </div>
+
+        <p>The final results were:</p>
+        <ul>
+            <li>ElasticNet MSE: 1.0150</li>
+            <li>Square Root LASSO MSE: 1.0439</li>
+            <li>SCAD MSE: 0.6941</li>
+        </ul>
+        <p>The SCAD algorithm had the lowest MSE and therefore performed the best on this simulated dataset.</p>
+
+        <h2>Question 3: Cross Validation</h2>
+        <p>To determine the best weights for the penalty function and cross-validate the results, I created a modified version of a previous cross-validation function to work with tensors and include a model parameter.</p>
+
+        <div class="code-block">
+            <code>
+                def cross_validate_model(model_class, X_tensor, y_tensor, alpha_vals, num_epochs=100, learning_rate=0.01, k_folds=5):<br>
+                    kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)<br>
+                    best_alpha = None<br>
+                    best_mse = float('inf')<br>
+                    for alpha in alpha_vals:<br>
+                        fold_mses = []<br>
+                        for train_idx, val_idx in kf.split(X_tensor):<br>
+                            X_train, X_val = X_tensor[train_idx], X_tensor[val_idx]<br>
+                            y_train, y_val = y_tensor[train_idx], y_tensor[val_idx]<br>
+                            model = model_class(input_size=X_train.shape[1], alpha=alpha)<br>
+                            model.fit(X_train, y_train, num_epochs=num_epochs)<br>
+                            y_pred = model.predict(X_val)<br>
+                            mse = nn.MSELoss()(y_pred, y_val).item()<br>
+                            fold_mses.append(mse)<br>
+                        mean_mse = np.mean(fold_mses)<br>
+                        if mean_mse < best_mse:<br>
+                            best_mse = mean_mse<br>
+                            best_alpha = alpha<br>
+                    return best_alpha, best_mse
+            </code>
+        </div>
     </div>
+
+</body>
+</html>
 
 </body>
 </html>
