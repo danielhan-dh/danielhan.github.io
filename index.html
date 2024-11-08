@@ -434,19 +434,19 @@ def plot_confusion(y_true, y_pred):
 <h2>Data Sampling and Stratification</h2>
 <p>Before starting, this dataset contains a large amount of variables, so for expediency, we only use 10% of the data. By using stratified k-fold, we can keep the same proportion of class 0 to class 1.</p>
 
-<img src="path/to/image/count_sample.png" alt="Count Sample Data">
+<img src="images/count_sample.png" alt="Count Sample Data">
 
 <h2>SMOTE Algorithm</h2>
 <p>Using the SMOTE algorithm, a preprocessing algorithm that creates artificial data points for the minority class, we can balance out class 1 and 0 to an even proportion of 1:1. We get an average accuracy of 92.59% across a stratified 10-fold cross validation. Below is the confusion matrix.</p>
 
-<img src="path/to/image/count_smote.png" alt="Count after SMOTE">
-<img src="path/to/image/confusion_smote.png" alt="Confusion Matrix after SMOTE">
+<img src="images/count_smote.png" alt="Count after SMOTE">
+<img src="images/confusion_smote.png" alt="Confusion Matrix after SMOTE">
 
 <h2>ADASYN Algorithm</h2>
 <p>Using the ADASYN algorithm, which creates synthetic samples based on the feature space of the original data, we again balance out the classes to a 1:1 proportion. We get an average accuracy of 92.67% across a stratified 10-fold cross validation, slightly more accurate than the SMOTE algorithm.</p>
 
-<img src="path/to/image/count_adasyn.png" alt="Count after ADASYN">
-<img src="path/to/image/confusion_adasyn.png" alt="Confusion Matrix after ADASYN">
+<img src="images/count_adasyn.png" alt="Count after ADASYN">
+<img src="images/confusion_adasyn.png" alt="Confusion Matrix after ADASYN">
 
 <h2>Kernel Density Estimation (KDE)</h2>
 <p>There is also a technique called fastKDE (kernel density estimation), which is a function that estimates the probability density function (pdf) of a data sample. This is useful for gaining a high-level understanding of a data sample’s distribution. However, this algorithm is affected by the Curse of Dimensionality and struggles with higher-dimensional data, so we use PCA to reduce the number of feature variables.</p>
@@ -459,7 +459,7 @@ X_reduced
 
 <p>Below is a graph depicting the KDE on a PCA-reduced dataset. Here, it is easy to see that data falls into “baskets” of high concentrations of similar data points. This is due to the nature of the original dataset, which contains 58 feature variables of ordinal numbers, and the effect of combining all of these variables into just 2 feature variables using PCA.</p>
 
-<img src="path/to/image/kde.png" alt="Kernel Density Estimation after PCA">
+<img src="images/kde.png" alt="Kernel Density Estimation after PCA">
 
 <h2>Normalizing Flows</h2>
 <p>Finally, we can use normalizing flows to oversample the minority class, a technique that transforms simple probabilistic problems into more complex problems through a series of invertible and differentiable mappings. The code for this process is adapted from Professor Vasiliu’s GitHub, with some modifications to adapt to the dataset. Below, I am applying the transformation:</p>
