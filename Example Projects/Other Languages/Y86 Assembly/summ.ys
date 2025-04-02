@@ -1,0 +1,62 @@
+# Simple program in Y86 that demonstrates knowledge and usage
+# of registers and low-level computing concepts. This program
+# is a low-level implementation of a C for loop that computes
+# a formula.
+
+
+.pos0x0
+irmovl $0, %eax # initialize outer loop counter to 0
+irmovl arr, %esp #setting up array esp is base of array
+irmovl $0, %esi #offset for arr
+outerloop:
+    irmovl $10, %edx #upper bound for n is 10
+    irmovl $0, %ebx # initialize inner loop counter i to 0
+    irmovl $0, %ecx # initialize innermost loop counter k to 0
+    irmovl $0, %edi #initialize sum to 0
+    subl %eax, %edx #check if n =< 10
+    jl end # jump to outer_end if greater than 10
+    
+# inner loop
+innerloop:
+    rrmovl %eax, %ebp #temp variable to compare with ebx
+    subl %ebx, %ebp # compare i with n (n = n - i)
+    jle outer   # jump out of inner loop if i >= n
+        
+# innermost loop
+innermostloop:
+    rrmovl %ebx, %ebp
+    subl %ecx, %ebp # compare k with i k = k - i
+    jl innerdec    # jump out of innermost loop if k > i
+            
+    irmovl $3, %edx  # add 3 to sum
+    addl %edx, %edi
+    irmovl $1, %edx # put 1 into edx for inc
+    addl %edx, %ecx # increment k
+    jmp innermostloop
+            
+innerdec:
+    irmovl $7, %edx   # subtract 7 from sum
+    subl %edx, %edi
+    irmovl $1, %edx
+    addl %edx, %ebx   # increment i
+    irmovl $0, %ecx   # reset k to 0
+    jmp innerloop
+    
+outer:
+    irmovl $7, %edx #subtract 7 from the sum
+    subl %edx, %edi
+        
+    rmmovl %edi, (%esp) #arr[i] = sum
+    irmovl $4, %edx
+    addl %edx, %esp #increment array
+        
+    irmovl $1, %edx
+    addl %edx, %eax # increment outer loop counter
+    jmp outerloop
+    
+end:
+    halt
+    
+.align 4
+    arr:
+    
